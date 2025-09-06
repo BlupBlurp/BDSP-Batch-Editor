@@ -406,10 +406,15 @@ class MainWindow:
         if not self.trainer_poke_data or not self.original_trainer_poke_data:
             return
 
-        # Add data to tree (limit to first 1000 entries for performance)
-        max_entries = min(1000, len(self.trainer_poke_data))
+        # Process all entries (no artificial limit)
+        total_entries = len(self.trainer_poke_data)
 
-        for i in range(max_entries):
+        # For large datasets, update progress periodically
+        update_interval = max(
+            100, total_entries // 50
+        )  # Update every 2% or minimum 100 entries
+
+        for i in range(total_entries):
             entry = self.trainer_poke_data[i]
             original_entry = self.original_trainer_poke_data[i]
             trainer_id = entry.get("ID", i)
@@ -455,12 +460,9 @@ class MainWindow:
             tag = "changed" if has_changes else "unchanged"
             self.data_tree.insert("", tk.END, values=values, tags=(tag,))
 
-        if len(self.trainer_poke_data) > max_entries:
-            # Create placeholder row for truncated data
-            placeholder_values = ["☐", "..."] + [
-                "..."
-            ] * 12  # checkbox + ID + 6 current + 6 original
-            self.data_tree.insert("", tk.END, values=placeholder_values)
+            # Update GUI periodically for large datasets to show progress
+            if total_entries > 1000 and (i + 1) % update_interval == 0:
+                self.root.update_idletasks()  # Allow GUI to refresh
 
     def _update_ui_state(self, file_loaded: bool):
         """Update UI state based on whether a file is loaded."""
