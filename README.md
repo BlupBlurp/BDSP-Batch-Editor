@@ -71,3 +71,33 @@ The application works with BDSP TrainerTable.json files extracted from the `mast
 - **`core/level_editor.py`**: Implements level modification logic and statistics
 - **`gui/main_window.py`**: Main application interface
 - **`gui/dialogs.py`**: File selection and confirmation dialogs
+
+## Building Executable
+
+Create a standalone executable (.exe) file:
+
+### Quick Build
+
+1. **Run the build script:**
+
+   ```bash
+   python build_tools/build_exe.py
+   ```
+
+2. **Find your executable:**
+   - Release package: `build_tools/release/` folder with executable and documentation
+
+### Manual Build (Advanced)
+
+If you prefer manual control:
+
+```bash
+# Install PyInstaller
+pip install pyinstaller
+
+# Build executable
+pyinstaller --onefile --windowed --name=BDSP-Batch-Editor --optimize=2 main.py
+
+# Or use the spec file for advanced configuration
+pyinstaller build_tools/BDSP-Batch-Editor.spec
+```
