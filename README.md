@@ -6,6 +6,12 @@ A Python GUI application for bulk editing Pokémon Brilliant Diamond/Shining Pea
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)
 
+## Community & Support
+
+For help or questions, join my modding Discord server:
+
+[Join Discord Server](https://discord.gg/5Qwz85EvC3)
+
 ## Current Functionality
 
 This application currently focuses on **bulk editing trainer Pokemon levels**. Future updates are planned to expand functionality to include:
@@ -23,12 +29,6 @@ You can obtain this file using the **BDSP-Repacker** tool:
 
 Follow the BDSP-Repacker documentation to export the TrainerTable.json file from your game files.
 Once exported, you can use this application to edit the trainer data and then re-import it using the same tool.
-
-## Community & Support
-
-For help or questions, join my modding Discord server:
-
-[Join Discord Server](https://discord.gg/5Qwz85EvC3)
 
 ## Basic Usage
 
