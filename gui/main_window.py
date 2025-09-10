@@ -38,6 +38,9 @@ class MainWindow:
         self._create_widgets()
         self._setup_menu()
 
+        # Set up cleanup on window close
+        self.root.protocol("WM_DELETE_WINDOW", self._on_closing)
+
     def _setup_window(self):
         """Setup the main window properties."""
         self.root.title("BDSP-Batch-Editor")
@@ -76,7 +79,7 @@ class MainWindow:
 
         # Open file button
         ttk.Button(
-            file_frame, text="Open TrainerTable JSON", command=self._open_file
+            file_frame, text="Open Masterdatas/JSON", command=self._open_file
         ).grid(row=0, column=0, padx=(0, 10))
 
         # File path label
@@ -387,7 +390,11 @@ class MainWindow:
         self._update_ui_state(True)
         self._update_file_path_display()
         self._update_data_info()
-        self._set_status(f"Loaded {len(self.trainer_poke_data or [])} trainer entries")
+
+        # Show appropriate message based on file type
+        file_type = "masterdatas" if self.unpacker.is_masterdata_file else "JSON"
+        entry_count = len(self.trainer_poke_data or [])
+        self._set_status(f"Loaded {entry_count} trainer entries from {file_type} file")
 
     def _file_load_error(self, error_message: str):
         """Handle file loading error."""
@@ -662,10 +669,16 @@ class MainWindow:
             ErrorDialog.show_warning(self.root, "No Data", "No data to save")
             return
 
-        # Always suggest "TrainerTable.json" as the default name
-        default_name = "TrainerTable.json"
+        # Determine default filename and file type based on original file
+        is_masterdata = self.unpacker.is_masterdata_file
+        if is_masterdata:
+            default_name = "masterdatas_modified"
+        else:
+            default_name = "TrainerTable_modified.json"
 
-        file_path = FileSelectionDialog.select_save_location(self.root, default_name)
+        file_path = FileSelectionDialog.select_save_location(
+            self.root, default_name, is_masterdata
+        )
         if file_path:
             self._save_to_file(file_path)
 
@@ -730,9 +743,10 @@ class MainWindow:
         """Show about dialog."""
         about_text = (
             "BDSP-Batch-Editor\n"
-            "Version 1.0\n\n"
+            "Version 2.0\n\n"
             "A tool for bulk editing Pokemon levels in\n"
             "Brilliant Diamond/Shining Pearl trainer data.\n\n"
+            "Now supports direct masterdatas file editing!\n"
             "Supports absolute and percentage level modifications\n"
             "with preview functionality."
         )
@@ -826,3 +840,14 @@ class MainWindow:
     def _get_selected_trainer_ids(self):
         """Get the list of selected trainer IDs for modifications."""
         return list(self.selected_trainers) if self.selected_trainers else None
+
+    def _on_closing(self):
+        """Handle window closing - cleanup resources."""
+        try:
+            # Clean up unpacker resources (especially for masterdatas files)
+            self.unpacker.cleanup()
+        except Exception:
+            pass  # Ignore cleanup errors during shutdown
+
+        # Destroy the window
+        self.root.destroy()

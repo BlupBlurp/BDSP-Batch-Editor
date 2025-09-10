@@ -15,7 +15,7 @@ class FileSelectionDialog:
     @staticmethod
     def select_trainer_file(parent=None) -> Optional[str]:
         """
-        Open file dialog to select a trainer JSON file.
+        Open file dialog to select a masterdatas file or trainer JSON file.
 
         Args:
             parent: Parent window
@@ -23,11 +23,15 @@ class FileSelectionDialog:
         Returns:
             Selected file path or None if cancelled
         """
-        filetypes = [("JSON files", "*.json"), ("All files", "*.*")]
+        filetypes = [
+            ("Masterdatas files", "masterdatas*"),
+            ("JSON files", "*.json"),
+            ("All files", "*.*"),
+        ]
 
         file_path = filedialog.askopenfilename(
             parent=parent,
-            title="Select TrainerTable JSON File",
+            title="Select Masterdatas or TrainerTable JSON File",
             filetypes=filetypes,
             initialdir=".",
         )
@@ -36,7 +40,9 @@ class FileSelectionDialog:
 
     @staticmethod
     def select_save_location(
-        parent=None, default_name: str = "TrainerTable_modified.json"
+        parent=None,
+        default_name: str = "masterdatas_modified",
+        is_masterdata: bool = False,
     ) -> Optional[str]:
         """
         Open file dialog to select save location.
@@ -44,17 +50,26 @@ class FileSelectionDialog:
         Args:
             parent: Parent window
             default_name: Default filename
+            is_masterdata: True if saving a masterdatas file
 
         Returns:
             Selected save path or None if cancelled
         """
-        filetypes = [("JSON files", "*.json"), ("All files", "*.*")]
+        if is_masterdata:
+            filetypes = [("Masterdatas files", "masterdatas*"), ("All files", "*.*")]
+            title = "Save Modified Masterdatas As"
+            default_extension = ""
+        else:
+            filetypes = [("JSON files", "*.json"), ("All files", "*.*")]
+            title = "Save Modified File As"
+            default_extension = ".json"
+            default_name = "TrainerTable_modified.json"
 
         file_path = filedialog.asksaveasfilename(
             parent=parent,
-            title="Save Modified File As",
+            title=title,
             filetypes=filetypes,
-            defaultextension=".json",
+            defaultextension=default_extension,
             initialfile=default_name,
         )
 

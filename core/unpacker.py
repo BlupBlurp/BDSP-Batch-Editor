@@ -1,12 +1,14 @@
 """
 Core unpacker module for BDSP-Batch-Editor.
-Handles file operations and JSON processing.
+Handles file operations and JSON processing, now with masterdatas support.
 """
 
 import json
 import os
 import shutil
 from typing import Dict, Any, Optional
+
+from core.masterdata_handler import MasterdataHandler
 
 
 class FileUnpacker:
@@ -16,13 +18,15 @@ class FileUnpacker:
         self.current_file_path: Optional[str] = None
         self.trainer_data: Optional[Dict[str, Any]] = None
         self.backup_created: bool = False
+        self.masterdata_handler: Optional[MasterdataHandler] = None
+        self.is_masterdata_file: bool = False
 
     def load_trainer_file(self, file_path: str) -> Dict[str, Any]:
         """
-        Load and parse a TrainerTable JSON file.
+        Load and parse either a TrainerTable JSON file or a masterdatas file.
 
         Args:
-            file_path: Path to the JSON file
+            file_path: Path to the JSON or masterdatas file
 
         Returns:
             Dictionary containing the parsed trainer data
@@ -30,21 +34,49 @@ class FileUnpacker:
         Raises:
             FileNotFoundError: If the file doesn't exist
             json.JSONDecodeError: If the file is not valid JSON
+            Exception: If masterdatas unpacking fails
         """
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"File not found: {file_path}")
 
-        try:
-            with open(file_path, "r", encoding="utf-8") as file:
-                data = json.load(file)
+        # Determine file type by extension and content
+        _, file_ext = os.path.splitext(file_path)
 
-            self.current_file_path = file_path
-            self.trainer_data = data
+        if file_ext.lower() == ".json":
+            # Handle JSON file directly
+            try:
+                with open(file_path, "r", encoding="utf-8") as file:
+                    data = json.load(file)
 
-            return data
+                self.current_file_path = file_path
+                self.trainer_data = data
+                self.is_masterdata_file = False
 
-        except json.JSONDecodeError as e:
-            raise json.JSONDecodeError(f"Invalid JSON file: {str(e)}", e.doc, e.pos)
+                return data
+
+            except json.JSONDecodeError as e:
+                raise json.JSONDecodeError(f"Invalid JSON file: {str(e)}", e.doc, e.pos)
+
+        else:
+            # Handle masterdatas file
+            try:
+                self.masterdata_handler = MasterdataHandler()
+                data = self.masterdata_handler.unpack_masterdata(file_path)
+
+                if not data:
+                    raise ValueError("No TrainerTable data found in masterdatas file")
+
+                self.current_file_path = file_path
+                self.trainer_data = data
+                self.is_masterdata_file = True
+
+                return data
+
+            except Exception as e:
+                if self.masterdata_handler:
+                    self.masterdata_handler.cleanup()
+                    self.masterdata_handler = None
+                raise Exception(f"Failed to load masterdatas file: {str(e)}")
 
     def extract_trainer_poke_data(self) -> list:
         """
@@ -101,8 +133,14 @@ class FileUnpacker:
         if not save_path:
             raise ValueError("No save path specified")
 
-        with open(save_path, "w", encoding="utf-8") as file:
-            json.dump(self.trainer_data, file, indent=4, ensure_ascii=False)
+        if self.is_masterdata_file and self.masterdata_handler:
+            # Save for masterdatas file - need to save to temp first, then repack
+            self.masterdata_handler.save_trainer_data(self.trainer_data)
+            self.masterdata_handler.repack_masterdata(save_path)
+        else:
+            # Save for JSON file
+            with open(save_path, "w", encoding="utf-8") as file:
+                json.dump(self.trainer_data, file, indent=4, ensure_ascii=False)
 
     def get_pokemon_count_by_trainer(self) -> Dict[int, int]:
         """
@@ -162,3 +200,18 @@ class FileUnpacker:
                     return False
 
         return True
+
+    def cleanup(self) -> None:
+        """Clean up resources, especially for masterdatas files."""
+        if self.masterdata_handler:
+            self.masterdata_handler.cleanup()
+            self.masterdata_handler = None
+
+        self.current_file_path = None
+        self.trainer_data = None
+        self.backup_created = False
+        self.is_masterdata_file = False
+
+    def __del__(self):
+        """Cleanup when object is destroyed."""
+        self.cleanup()

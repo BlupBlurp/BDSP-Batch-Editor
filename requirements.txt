@@ -1,1 +1,3 @@
 tkinter
+UnityPy>=1.10.0
+python-rapidjson
