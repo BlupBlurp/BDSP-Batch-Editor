@@ -1,12 +1,19 @@
 # UTF-8
 #
-# Version information for BDSP-Batch-Editor.exe
+# Version        [StringStruct(u'CompanyName', u'BlupBlurp'),
+        StringStruct(u'FileDescription', u'BDSP Trainer Data Batch Editor with Masterdatas Support'),
+        StringStruct(u'FileVersion', u'2.0.0'),
+        StringStruct(u'InternalName', u'BDSP-Batch-Editor'),
+        StringStruct(u'LegalCopyright', u'© 2025 BlupBlurp. All rights reserved.'),
+        StringStruct(u'OriginalFilename', u'BDSP-Batch-Editor.exe'),
+        StringStruct(u'ProductName', u'BDSP-Batch-Editor'),
+        StringStruct(u'ProductVersion', u'2.0.0')]))tion for BDSP-Batch-Editor.exe
 #
 
 VSVersionInfo(
   ffi=FixedFileInfo(
-    filevers=(1, 0, 0, 0),
-    prodvers=(1, 0, 0, 0),
+    filevers=(2, 0, 0, 0),
+    prodvers=(2, 0, 0, 0),
     mask=0x3f,
     flags=0x0,
     OS=0x40004,

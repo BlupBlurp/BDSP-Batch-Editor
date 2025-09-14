@@ -85,8 +85,7 @@ Create a standalone executable (.exe) file:
    ```
 
 2. **Find your executable:**
-   - Single file: `dist/BDSP-Batch-Editor.exe`
-   - Release package: `release/` folder with documentation
+   - Release package: `build_tools/release/` folder with executable and documentation
 
 ### Manual Build (Advanced)
 

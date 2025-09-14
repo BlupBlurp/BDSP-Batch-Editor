@@ -1,5 +1,5 @@
 tests/
-build_tools/release/
+build_tools/release
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
