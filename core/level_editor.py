@@ -286,3 +286,45 @@ class LevelEditor:
     def get_history(self) -> List[Dict[str, Any]]:
         """Get the modification history."""
         return self.modification_history.copy()
+
+    def apply_level_modification_from_string(
+        self,
+        trainer_poke_data: List[Dict[str, Any]],
+        modification_string: str,
+        min_level: int = 1,
+        max_level: int = 100,
+        selected_trainers: Optional[List[int]] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Apply level modifications using a string input like "+10" or "20%".
+        Returns modified data instead of modifying in-place.
+
+        Args:
+            trainer_poke_data: List of trainer Pokemon data to modify
+            modification_string: Modification string (e.g., "+10", "20%", "-5")
+            min_level: Minimum allowed level (default: 1)
+            max_level: Maximum allowed level (default: 100)
+            selected_trainers: List of trainer IDs to modify (None for all)
+
+        Returns:
+            List of modified trainer Pokemon data (new copies)
+        """
+        import copy
+
+        # Parse the modification string
+        operation_type, value = self.parse_level_modification(modification_string)
+
+        # Make copies of the data so we don't modify the original
+        modified_data = copy.deepcopy(trainer_poke_data)
+
+        # Apply modifications to the copies
+        self.apply_level_modification(
+            modified_data,
+            operation_type,
+            value,
+            min_level,
+            max_level,
+            selected_trainers,
+        )
+
+        return modified_data
