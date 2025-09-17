@@ -232,6 +232,20 @@ class PersonalMasterdataHandler:
                 f"Content type {content_name} not found in extracted files"
             )
 
+    def save_data(self, data: Dict[str, Any]) -> None:
+        """
+        Save data (generic method for unpacker compatibility).
+        For personal_masterdatas, this saves PersonalTable data.
+
+        Args:
+            data: Dictionary containing the data to save
+        """
+        if "PersonalTable" in data:
+            self.save_content("PersonalTable", data["PersonalTable"])
+        else:
+            # If data doesn't contain PersonalTable wrapper, assume it's direct PersonalTable data
+            self.save_content("PersonalTable", data)
+
     def repack_masterdata(self, output_path: str) -> None:
         """
         Repack the modified data back into a personal_masterdatas file.
@@ -243,17 +257,67 @@ class PersonalMasterdataHandler:
             Exception: If repacking fails
         """
         if not self.current_file_path or not self.temp_dir:
-            raise RuntimeError("No masterdatas file currently loaded")
+            raise RuntimeError("No personal_masterdatas file currently loaded")
 
         try:
-            # Implementation would follow similar pattern to MasterdataHandler
-            # For now, raise NotImplementedError until needed
-            raise NotImplementedError(
-                "Personal masterdatas repacking not yet implemented"
-            )
-
+            self._repack_assets(output_path)
         except Exception as e:
             raise Exception(f"Failed to repack personal_masterdatas file: {str(e)}")
+
+    def _repack_assets(self, output_path: str) -> None:
+        """Repack assets back into personal_masterdatas file using UnityPy."""
+        if not self.temp_dir or not self.path_ids_file:
+            raise RuntimeError("Temporary directory or path IDs file not initialized")
+
+        src_path = self.current_file_path
+        extract_dir = os.path.join(self.temp_dir, "Export")
+
+        # Load path IDs mapping
+        with open(self.path_ids_file, "r") as f:
+            path_dic = rapidjson.load(f)
+
+        # Export types we handle
+        export_types = ["MonoBehaviour"]
+
+        env = UnityPy.load(src_path)
+
+        for obj in env.objects:
+            if obj.type.name in export_types:
+                # Get object name from path mapping
+                if str(obj.path_id) in path_dic:
+                    name = path_dic[str(obj.path_id)]
+                else:
+                    # Fallback to reading tree for name
+                    tree = obj.read_typetree()
+                    name = self._get_object_name(env, obj, tree)
+
+                # Check if modified JSON file exists
+                json_path = os.path.join(extract_dir, f"{name}.json")
+                if os.path.exists(json_path):
+                    with open(json_path, "r", encoding="utf8") as f:
+                        modified_data = rapidjson.load(f)
+                        obj.save_typetree(modified_data)
+
+        # Save repacked file
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        with open(output_path, "wb") as f:
+            f.write(env.file.save(packer=(64, 2)))
+
+    def _get_object_name(self, env, obj, tree) -> str:
+        """Get object name from tree data."""
+        if "m_Name" in tree:
+            name = tree["m_Name"]
+        else:
+            name = ""
+
+        if name == "":
+            if obj.type.name == "MonoBehaviour":
+                script_path_id = tree["m_Script"]["m_PathID"]
+                for script in env.objects:
+                    if script.path_id == script_path_id:
+                        name = script.read().name
+
+        return os.path.basename(name) if name else f"unnamed_{obj.path_id}"
 
     def get_working_directory(self) -> Optional[str]:
         """Get the current working directory path for debugging."""
@@ -268,7 +332,6 @@ class PersonalMasterdataHandler:
                 print(f"Warning: Failed to clean up temporary directory: {str(e)}")
 
         self.temp_dir = None
-        self.trainer_table_path = None
         self.path_ids_file = None
         self.extracted_files.clear()
         self.current_file_path = None

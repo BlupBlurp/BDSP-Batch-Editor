@@ -1,6 +1,6 @@
 # BDSP-Batch-Editor
 
-A Python GUI application for bulk editing Pokémon Brilliant Diamond/Shining Pearl trainer data.
+A Python GUI application for bulk editing Pokémon Brilliant Diamond/Shining Pearl trainer data. (The creation of this tool has been AI Assisted)
 
 ![Python](https://img.shields.io/badge/python-3.8+-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)

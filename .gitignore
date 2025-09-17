@@ -1,4 +1,5 @@
 tests/
+docs/
 build_tools/release
 
 # Byte-compiled / optimized / DLL files

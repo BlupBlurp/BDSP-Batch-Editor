@@ -20,7 +20,9 @@ class FileUnpacker:
     def __init__(self):
         self.current_file_path: Optional[str] = None
         self.current_file_type: Optional[str] = None
-        self.trainer_data: Optional[Dict[str, Any]] = None
+        self.trainer_data: Optional[Dict[str, Any]] = (
+            None  # Note: Contains any type of data, not just trainer data
+        )
         self.backup_created: bool = False
         self.handler: Optional[Any] = (
             None  # Will be MasterdataHandler or PersonalMasterdataHandler
@@ -138,7 +140,8 @@ class FileUnpacker:
         self, output_path: Optional[str] = None, create_backup: bool = True
     ) -> str:
         """
-        Save the modified trainer data back to file through the appropriate handler.
+        Save the modified data back to file through the appropriate handler.
+        Note: Method name kept for compatibility, but handles any data type.
 
         Args:
             output_path: Optional output path, uses current file path if not specified
@@ -152,7 +155,7 @@ class FileUnpacker:
             Exception: If saving fails
         """
         if not self.trainer_data or not self.current_file_path or not self.handler:
-            raise RuntimeError("No trainer data loaded or no handler available")
+            raise RuntimeError("No data loaded or no handler available")
 
         if create_backup and not self.backup_created:
             self.create_backup()
@@ -160,11 +163,11 @@ class FileUnpacker:
         save_path = output_path or self.current_file_path
 
         try:
-            # For masterdatas files, use the handler's repack functionality
+            # For masterdatas/personal_masterdatas files, use the handler's repack functionality
             if hasattr(self.handler, "repack_masterdata"):
-                # First save the updated trainer data to the temporary JSON file
-                if hasattr(self.handler, "save_trainer_data"):
-                    self.handler.save_trainer_data(self.trainer_data)
+                # First save the updated data to the temporary JSON file(s)
+                if hasattr(self.handler, "save_data"):
+                    self.handler.save_data(self.trainer_data)
 
                 # Then repack the masterdatas file
                 self.handler.repack_masterdata(save_path)

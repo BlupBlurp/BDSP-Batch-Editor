@@ -233,10 +233,14 @@ class MainWindow:
         welcome_text = """Welcome to BDSP-Batch-Editor!
 
 To get started:
-1. Select a folder or file using the buttons in the left panel
+1. Select a folder (containing romfs structure) or file using the buttons in the left panel
 2. Choose a file type from the "Detected Files" section
 3. Select content from the "Available Content" section
 4. The editor will appear here to modify your data
+
+Supported operations:
+• TrainerTable: Batch modify Pokemon levels across trainers
+• PersonalTable: Batch modify Pokemon stats and attributes
 
 Export your changes using the Export Options in the left panel."""
 
@@ -591,6 +595,371 @@ Export your changes using the Export Options in the left panel."""
         ttk.Label(
             trainer_frame, text="(Leave empty for ALL trainers, or specify IDs: 1,2,3)"
         ).pack(side=tk.LEFT, padx=(0, 10))
+
+    def _create_personal_field_controls(self, parent):
+        """Create the field editing controls for batch editing PersonalTable data."""
+        # Initialize UI variables for PersonalTable editing
+        if not hasattr(self, 'personal_field_var'):
+            self.personal_field_var = tk.StringVar()
+        if not hasattr(self, 'personal_modification_var'):
+            self.personal_modification_var = tk.StringVar()
+        if not hasattr(self, 'personal_pokemon_ids_var'):
+            self.personal_pokemon_ids_var = tk.StringVar()
+        if not hasattr(self, 'personal_min_value_var'):
+            self.personal_min_value_var = tk.StringVar(value="0")
+        if not hasattr(self, 'personal_max_value_var'):
+            self.personal_max_value_var = tk.StringVar(value="255")
+        
+        # Field selection and modification input
+        input_frame = ttk.Frame(parent)
+        input_frame.pack(fill="x", pady=(0, 10))
+
+        # Field selection dropdown
+        ttk.Label(input_frame, text="Field:").pack(side=tk.LEFT, padx=(0, 10))
+        
+        # Get all available fields from PersonalTable data
+        field_options = []
+        if hasattr(self, 'personal_data') and self.personal_data:
+            # Get field names from the first entry
+            sample_entry = self.personal_data[0]
+            # Define user-friendly field names
+            field_mapping = {
+                "basic_hp": "HP",
+                "basic_atk": "Attack", 
+                "basic_def": "Defense",
+                "basic_agi": "Speed",
+                "basic_spatk": "Sp. Attack",
+                "basic_spdef": "Sp. Defense",
+                "exp_value": "Experience Value",
+                "give_exp": "Give Experience",
+                "grow": "Growth Rate",
+                "initial_friendship": "Initial Friendship",
+                "get_rate": "Catch Rate",
+                "height": "Height",
+                "weight": "Weight",
+                "type1": "Type 1",
+                "type2": "Type 2",
+                "tokusei1": "Ability 1",
+                "tokusei2": "Ability 2", 
+                "tokusei3": "Hidden Ability",
+                "item1": "Item 1",
+                "item2": "Item 2",
+                "item3": "Item 3"
+            }
+            
+            for field_key in sample_entry.keys():
+                if field_key in field_mapping:
+                    display_name = field_mapping[field_key]
+                    field_options.append(f"{display_name} ({field_key})")
+        
+        self.personal_field_dropdown = ttk.Combobox(
+            input_frame,
+            textvariable=self.personal_field_var,
+            values=field_options,
+            state="readonly",
+            width=25
+        )
+        self.personal_field_dropdown.pack(side=tk.LEFT, padx=(0, 10))
+        
+        # Set default selection
+        if field_options:
+            self.personal_field_dropdown.set(field_options[0])
+
+        # Modification input
+        ttk.Label(input_frame, text="Modification:").pack(side=tk.LEFT, padx=(0, 10))
+        self.personal_modification_entry = ttk.Entry(
+            input_frame, textvariable=self.personal_modification_var, width=15
+        )
+        self.personal_modification_entry.pack(side=tk.LEFT, padx=(0, 10))
+        ttk.Label(input_frame, text="(e.g., +10, -5, 20%, 50)").pack(
+            side=tk.LEFT, padx=(0, 20)
+        )
+
+        # Value constraints
+        ttk.Label(input_frame, text="Min:").pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Entry(input_frame, textvariable=self.personal_min_value_var, width=6).pack(
+            side=tk.LEFT, padx=(0, 10)
+        )
+
+        ttk.Label(input_frame, text="Max:").pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Entry(input_frame, textvariable=self.personal_max_value_var, width=6).pack(
+            side=tk.LEFT, padx=(0, 10)
+        )
+
+        # Pokemon selection frame
+        pokemon_frame = ttk.Frame(parent)
+        pokemon_frame.pack(fill="x", pady=(10, 10))
+        
+        ttk.Label(pokemon_frame, text="Target Pokemon:").pack(side=tk.LEFT, padx=(0, 10))
+        self.personal_pokemon_ids_input = ttk.Entry(
+            pokemon_frame, textvariable=self.personal_pokemon_ids_var, width=40
+        )
+        self.personal_pokemon_ids_input.pack(side=tk.LEFT, padx=(0, 10))
+        ttk.Label(pokemon_frame, text="(Leave empty for ALL Pokemon, or specify IDs: 1,2,3)").pack(
+            side=tk.LEFT, padx=(0, 10)
+        )
+
+        # Buttons frame
+        buttons_frame = ttk.Frame(parent)
+        buttons_frame.pack(fill="x", pady=(10, 0))
+
+        self.personal_preview_button = ttk.Button(
+            buttons_frame,
+            text="Preview Changes",
+            command=self._preview_personal_changes
+        )
+        self.personal_preview_button.pack(side=tk.LEFT, padx=(0, 10))
+
+        self.personal_apply_button = ttk.Button(
+            buttons_frame,
+            text="Apply Changes", 
+            command=self._apply_personal_changes
+        )
+        self.personal_apply_button.pack(side=tk.LEFT, padx=(0, 10))
+
+    def _preview_personal_changes(self):
+        """Preview the field changes without applying them."""
+        if not hasattr(self, 'personal_data') or not self.personal_data:
+            messagebox.showwarning("No Data", "No PersonalTable data loaded.")
+            return
+
+        try:
+            # Get modification parameters
+            field_selection = self.personal_field_var.get().strip()
+            modification = self.personal_modification_var.get().strip()
+            min_value = int(self.personal_min_value_var.get())
+            max_value = int(self.personal_max_value_var.get())
+            
+            if not field_selection or not modification:
+                messagebox.showwarning("Invalid Input", "Please select a field and enter a modification.")
+                return
+            
+            # Extract field key from selection (format: "Display Name (field_key)")
+            if "(" in field_selection and ")" in field_selection:
+                field_key = field_selection.split("(")[1].split(")")[0]
+            else:
+                messagebox.showerror("Invalid Selection", "Please select a valid field.")
+                return
+
+            # Determine target Pokemon
+            pokemon_ids_text = self.personal_pokemon_ids_var.get().strip()
+            
+            if not pokemon_ids_text:
+                # Empty field = apply to ALL Pokemon
+                selected_data = copy.deepcopy(self.personal_data)
+                operation_scope = "ALL Pokemon"
+            else:
+                # Parse specific Pokemon IDs
+                try:
+                    pokemon_ids = [
+                        int(id_str.strip())
+                        for id_str in pokemon_ids_text.split(",")
+                        if id_str.strip()
+                    ]
+                    selected_data = [
+                        entry for entry in self.personal_data
+                        if entry.get("id", 0) in pokemon_ids
+                    ]
+                    operation_scope = f"Pokemon {pokemon_ids_text}"
+                except ValueError:
+                    messagebox.showerror(
+                        "Invalid Input",
+                        "Please enter valid Pokemon IDs (e.g., 1,2,3 or leave empty for all)"
+                    )
+                    return
+
+            if not selected_data:
+                messagebox.showwarning("Preview", f"No Pokemon data found for {operation_scope}")
+                return
+
+            # Apply modifications for preview
+            preview_data = copy.deepcopy(selected_data)
+            changes_made = self._apply_field_modification(
+                preview_data, field_key, modification, min_value, max_value
+            )
+
+            # Show preview dialog
+            self._show_personal_preview_dialog(selected_data, preview_data, field_key, modification, operation_scope)
+
+        except Exception as e:
+            ErrorDialog.show_error(self.root, "Preview Error", str(e))
+
+    def _apply_personal_changes(self):
+        """Apply the field changes to the PersonalTable data."""
+        if not hasattr(self, 'personal_data') or not self.personal_data:
+            messagebox.showwarning("No Data", "No PersonalTable data loaded.")
+            return
+
+        try:
+            # Get modification parameters
+            field_selection = self.personal_field_var.get().strip()
+            modification = self.personal_modification_var.get().strip()
+            min_value = int(self.personal_min_value_var.get())
+            max_value = int(self.personal_max_value_var.get())
+            
+            if not field_selection or not modification:
+                messagebox.showwarning("Invalid Input", "Please select a field and enter a modification.")
+                return
+            
+            # Extract field key from selection
+            if "(" in field_selection and ")" in field_selection:
+                field_key = field_selection.split("(")[1].split(")")[0]
+            else:
+                messagebox.showerror("Invalid Selection", "Please select a valid field.")
+                return
+
+            # Determine target Pokemon
+            pokemon_ids_text = self.personal_pokemon_ids_var.get().strip()
+            
+            if not pokemon_ids_text:
+                # Empty field = apply to ALL Pokemon
+                target_indices = list(range(len(self.personal_data)))
+                operation_scope = "ALL Pokemon"
+            else:
+                # Parse specific Pokemon IDs
+                try:
+                    pokemon_ids = [
+                        int(id_str.strip())
+                        for id_str in pokemon_ids_text.split(",")
+                        if id_str.strip()
+                    ]
+                    target_indices = []
+                    for i, entry in enumerate(self.personal_data):
+                        if entry.get("id", 0) in pokemon_ids:
+                            target_indices.append(i)
+                    operation_scope = f"Pokemon {pokemon_ids_text}"
+                except ValueError:
+                    messagebox.showerror(
+                        "Invalid Input",
+                        "Please enter valid Pokemon IDs (e.g., 1,2,3 or leave empty for all)"
+                    )
+                    return
+
+            if not target_indices:
+                messagebox.showwarning("Apply Changes", f"No Pokemon data found for {operation_scope}")
+                return
+
+            # Apply changes to target Pokemon
+            modified_count = 0
+            for index in target_indices:
+                pokemon_data = [self.personal_data[index]]
+                changes_made = self._apply_field_modification(
+                    pokemon_data, field_key, modification, min_value, max_value
+                )
+                if changes_made:
+                    modified_count += 1
+
+            # Show success message
+            messagebox.showinfo(
+                "Success",
+                f"Applied field modification '{modification}' to {field_key} for {modified_count} Pokemon ({operation_scope})"
+            )
+
+            # Refresh current Pokemon display if one is selected
+            if hasattr(self, 'pokemon_dropdown') and self.pokemon_dropdown:
+                current_selection = self.pokemon_dropdown.get()
+                if current_selection:
+                    self._on_pokemon_selected()
+
+        except Exception as e:
+            ErrorDialog.show_error(self.root, "Apply Changes Error", str(e))
+
+    def _apply_field_modification(self, pokemon_data, field_key, modification, min_value, max_value):
+        """Apply field modification to Pokemon data."""
+        changes_made = False
+        
+        for pokemon in pokemon_data:
+            if field_key not in pokemon:
+                continue
+                
+            current_value = pokemon.get(field_key, 0)
+            new_value = current_value
+            
+            # Parse modification
+            if modification.endswith('%'):
+                # Percentage modification
+                percentage = float(modification[:-1])
+                new_value = int(current_value * (1 + percentage / 100))
+            elif modification.startswith('+'):
+                # Addition
+                new_value = current_value + int(modification[1:])
+            elif modification.startswith('-'):
+                # Subtraction  
+                new_value = current_value - int(modification[1:])
+            else:
+                # Absolute value
+                new_value = int(modification)
+            
+            # Apply constraints
+            new_value = max(min_value, min(max_value, new_value))
+            
+            if new_value != current_value:
+                pokemon[field_key] = new_value
+                changes_made = True
+                
+        return changes_made
+
+    def _show_personal_preview_dialog(self, original_data, modified_data, field_key, modification, operation_scope):
+        """Show preview dialog for PersonalTable changes."""
+        preview_window = tk.Toplevel(self.root)
+        preview_window.title("Preview PersonalTable Changes")
+        preview_window.geometry("600x400")
+        preview_window.transient(self.root)
+        preview_window.grab_set()
+
+        # Main frame
+        main_frame = ttk.Frame(preview_window, padding="10")
+        main_frame.pack(fill="both", expand=True)
+
+        # Title
+        title_label = ttk.Label(
+            main_frame,
+            text=f"Preview: {modification} to {field_key} for {operation_scope}",
+            font=("TkDefaultFont", 12, "bold")
+        )
+        title_label.pack(pady=(0, 10))
+
+        # Scrollable preview area
+        canvas = tk.Canvas(main_frame)
+        scrollbar = ttk.Scrollbar(main_frame, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas)
+
+        scrollable_frame.bind(
+            "<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        # Show changes
+        changes_shown = 0
+        for i, (original, modified) in enumerate(zip(original_data, modified_data)):
+            if changes_shown >= 20:  # Limit display to prevent overwhelming
+                ttk.Label(
+                    scrollable_frame,
+                    text=f"... and {len(original_data) - changes_shown} more changes",
+                    font=("TkDefaultFont", 9, "italic")
+                ).pack(pady=5)
+                break
+                
+            original_value = original.get(field_key, 0)
+            modified_value = modified.get(field_key, 0)
+            
+            if original_value != modified_value:
+                pokemon_id = original.get("id", i)
+                change_text = f"Pokemon #{pokemon_id:03d}: {field_key} {original_value} → {modified_value}"
+                ttk.Label(scrollable_frame, text=change_text).pack(anchor="w", pady=1)
+                changes_shown += 1
+
+        if changes_shown == 0:
+            ttk.Label(scrollable_frame, text="No changes would be made.").pack(pady=20)
+
+        # Pack canvas and scrollbar
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        # Close button
+        ttk.Button(preview_window, text="Close", command=preview_window.destroy).pack(pady=10)
 
     def _preview_trainer_changes(self):
         """Preview changes for the selected trainer."""
@@ -1213,6 +1582,13 @@ Export your changes using the Export Options in the left panel."""
         # Load initial Pokemon data
         if self.pokemon_list:
             self._load_pokemon_stats()
+
+        # Field modification controls frame (NEW - for batch editing)
+        mod_controls_frame = ttk.LabelFrame(main_frame, text="Batch Field Modification", padding=10)
+        mod_controls_frame.pack(fill=tk.X, pady=(10, 0))
+
+        # Use existing method to create modification controls
+        self._create_personal_field_controls(mod_controls_frame)
 
         # Control buttons frame
         button_frame = ttk.Frame(main_frame)
